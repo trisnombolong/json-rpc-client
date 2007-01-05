@@ -19,7 +19,6 @@
 package org.codebistro.jsonrpc;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.net.URI;
