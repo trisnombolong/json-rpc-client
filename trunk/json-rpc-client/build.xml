@@ -1,0 +1,35 @@
+<project name="json-rpc-client" default="dist">
+	<target name="init">
+		<property name="build.classes" value="build/classes" />
+	</target>
+
+	<target name="compile" depends="init">
+		<mkdir dir="${build.classes}" />
+		<javac srcdir="src" destdir="${build.classes}">
+			<classpath>
+				<fileset dir="lib">
+					<include name="*.jar" />
+				</fileset>
+			</classpath>
+		</javac>
+	</target>
+	
+	<target name="jar" depends="compile">
+		<jar destfile="build/json-rpc-client.jar">
+			<fileset dir="${build.classes}" />
+		</jar>
+	</target>
+	
+	<target name="src-dist" depends="init">
+		<zip destfile="build/json-rpc-client-source.zip">
+			<fileset dir=".">
+				<exclude name="build/**"/>
+				<exclude name=".svn"/>
+			</fileset>
+		</zip>
+	</target>
+	
+	<target name="dist" depends="jar, src-dist">
+		<!-- TODO all the regular distribution stuff -->
+	</target>
+</project>
