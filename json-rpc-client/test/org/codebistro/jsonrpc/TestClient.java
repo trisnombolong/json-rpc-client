@@ -1,3 +1,21 @@
+/*
+ * JSON-RPC-Client, a Java client extension to JSON-RPC-Java
+ *
+ * (C) Copyright CodeBistro 2007, Sasha Ovsankin <sasha@codebistro.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package org.codebistro.jsonrpc;
 
 import java.io.IOException;
@@ -14,6 +32,10 @@ import com.metaparadigm.jsonrpc.test.Test.Wiggle;
 
 import junit.framework.TestCase;
 
+/**
+ * This test implements some of JSON-RPC-Java tests.
+ * Assumes the test JSON-RPC server is running -- see the code.
+ */
 public class TestClient extends TestCase {
 	Client client;
 	HttpState state;
@@ -21,10 +43,13 @@ public class TestClient extends TestCase {
 	String rootURL= "http://localhost:8080/jsonrpc";
 	
 	protected void setUp() throws Exception {
+		// Register HTTP
+		HTTPSession.register(TransportRegistry.i());
+		
 		setupServerTestEnvironment(rootURL + "/test.jsp");
-		client= new Client(rootURL + "/JSON-RPC");
-		// Pass the the session set up earlier
-		client.setState(state);
+		HTTPSession httpSession= (HTTPSession)TransportRegistry.i().createSession(rootURL + "/JSON-RPC");
+		httpSession.setState(state);
+		client= new Client(httpSession);
 	}
 	
 	/**
@@ -43,7 +68,7 @@ public class TestClient extends TestCase {
 	}
 	
 	public void testBadClient() {
-		Client badClient= new Client("http://non-existing-server:99");
+		Client badClient= new Client(TransportRegistry.i().createSession("http://non-existing-server:99"));
 		try {
 			Test badTest= badClient.openProxy("test", Test.class);
 			badTest.voidFunction();
