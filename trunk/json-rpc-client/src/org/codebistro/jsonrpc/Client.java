@@ -18,25 +18,14 @@
  */
 package org.codebistro.jsonrpc;
 
-import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.net.URI;
-import java.text.ParseException;
 import java.util.HashMap;
 
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpException;
-import org.apache.commons.httpclient.HttpState;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.methods.PostMethod;
-import org.apache.commons.httpclient.methods.RequestEntity;
-import org.apache.commons.httpclient.methods.StringRequestEntity;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.json.JSONTokener;
 
 import com.metaparadigm.jsonrpc.JSONRPCResult;
 import com.metaparadigm.jsonrpc.JSONSerializer;
@@ -45,12 +34,12 @@ import com.metaparadigm.jsonrpc.SerializerState;
 public class Client implements InvocationHandler {
 	static Log log= LogFactory.getLog(Client.class);
 
-	URI uri;
+	Session session;
 	JSONSerializer message2Object;
 	
-	public Client(String uriString) {
+	public Client(Session session) {
 		try {
-			uri= new URI(uriString);
+			this.session= session;
 			message2Object= new JSONSerializer();
 			message2Object.registerDefaultSerializers();
 		} catch (Exception e) {
@@ -96,48 +85,20 @@ public class Client implements InvocationHandler {
 		}
 		message.put("params", params);
 		message.put("id", 1);
-		JSONObject responseMessage= sendAndReceive(message);
+		JSONObject responseMessage= session.sendAndReceive(message);
 		if (!responseMessage.has("result"))
 			processException(responseMessage);
 		Object rawResult= responseMessage.get("result");
 		if (rawResult==null) {
 			processException(responseMessage);
 		}
-		Class returnType= method.getReturnType();
+		Class<?> returnType= method.getReturnType();
 		if (returnType.equals(Void.TYPE))
 			return null;
 		SerializerState state= new SerializerState();
 		return message2Object.unmarshall(state, returnType, rawResult);
 	}
 	
-	JSONObject sendAndReceive(JSONObject message) {
-		if (log.isDebugEnabled()) log.debug("Sending: " + message.toString(2));
-		PostMethod postMethod = new PostMethod(uri.toString());
-		postMethod.setRequestHeader("Content-Type", "text/plain");
-		
-		RequestEntity requestEntity= new StringRequestEntity(message.toString());
-		postMethod.setRequestEntity(requestEntity);
-		try {
-			http().executeMethod(null, postMethod, state);
-			int statusCode= postMethod.getStatusCode();
-			if (statusCode!=HttpStatus. SC_OK)
-				throw new ClientError("HTTP Status - " + 
-					HttpStatus.getStatusText(statusCode) + " (" + statusCode + ")");
-			JSONTokener tokener= new JSONTokener(postMethod.getResponseBodyAsString());
-			Object rawResponseMessage= tokener.nextValue();
-			JSONObject responseMessage= (JSONObject)rawResponseMessage;
-			if (responseMessage==null)
-				throw new ClientError("Invalid response type - " + rawResponseMessage.getClass());
-			return responseMessage;		
-		} catch (ParseException e) {
-			throw new ClientError(e);
-		} catch (HttpException e) {
-			throw new ClientError(e);
-		} catch (IOException e) {
-			throw new ClientError(e);
-		}
-	}
-
 	void processException(JSONObject responseMessage) {
 		JSONObject error= (JSONObject)responseMessage.get("error");
 		if (error!=null) {
@@ -146,27 +107,6 @@ public class Client implements InvocationHandler {
 				(String)error.get("msg"), trace);	
 		} else
 			throw new ErrorResponse(JSONRPCResult.CODE_ERR_PARSE, "Unknown response:" + responseMessage.toString(2), null);
-	}
-
-	HttpClient client;
-	HttpState state;
-	
-	/** 
-	 * An option to set state from the outside.
-	 * for example, to provide existing session parameters.
-	 */
-	public void setState(HttpState state) {
-		this.state= state;
-	}
-	
-	HttpClient http() {
-		if (client==null) {
-			client= new HttpClient();
-			if (state==null)
-				state= new HttpState();
-			client.setState(state);
-		}
-		return client;
 	}
 
 }
